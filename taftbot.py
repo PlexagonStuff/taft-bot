@@ -32,7 +32,7 @@ async def on_message(message):
         return
     if message.mentions[0].id == client.user.id:
         print(message.content)
-        if "How are you feeling?" in message.content:
+        if "How are you feeling" in message.content:
             senderName = message.author.display_name
             await message.channel.send(senderName + ", today I am feeling William Howard Taft!", file=discord.File("taftimages/" + random.choice(image_files)))
 @tree.command(
