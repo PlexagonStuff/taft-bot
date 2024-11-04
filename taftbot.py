@@ -47,13 +47,14 @@ async def sendText(phone_number, carrier, message):
     senderName = message.author.display_name
     channel = message.channel.name
     textMessage = "from " + senderName + " in " + channel + " " + message.content
+    textMessage = textMessage.encode("ascii", 'ignore').decode('ascii')
     print(textMessage)
     server.sendmail(EMAIL, recipient, str(textMessage))
 
 
 @client.event
 async def on_message(message):
-    await sendText(PHONENUM,PHONECARRIER, message)
+   # await sendText(PHONENUM,PHONECARRIER, message)
     if message.author == client.user:
         return
     #if message.mentions[0] == client.user:
