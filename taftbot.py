@@ -41,19 +41,26 @@ image_files = os.listdir(image_folder)
 print(image_files)
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
-
+letterboxd_accounts = ["plexagon", "oneduckaday", "the_better_evan", "genet17", "g1bblets"]
 feed = feedparser.parse("https://letterboxd.com/plexagon/rss/")
 seen_entries = []
-#print(feed)
-for x in feed.entries:
-    seen_entries.append(x)
 
 
 @client.event
 async def on_ready():
     await tree.sync()
+    await setupSeenEntries()
     checkLetterboxd.start()  # Add this line
     print(f'We have logged in as {client.user}')
+
+async def setupSeenEntries():
+    for account in letterboxd_accounts:
+        feed = feedparser.parse("https://letterboxd.com/" + account + "/rss/")
+        for x in feed.entries:
+            #Filter out lists eww cringe
+            #print(x.keys())
+            if x.has_key("letterboxd_watcheddate"):
+                seen_entries.append(x)
 
 async def sendText(phone_number, carrier, message):
     recipient = str(phone_number) + CARRIER_MAP[carrier]
@@ -108,33 +115,40 @@ async def setupLetterboxdChannel(interaction):
 async def recentLetterboxdReview(interaction):
     time = datetime.now().timetuple()
     entrylist = []
-    for x in feed.entries:
+    for x in seen_entries:
         if (datetime(*time[0:6]) - datetime(*x.published_parsed[0:6])).total_seconds() < 604800:
             entrylist.append(x)
     if not entrylist:
-        entrylist.append(feed.entries[0]) #This would be the most recent review
+        entrylist.append(seen_entries[len(seen_entries)-1]) #This would be the most recent review
+    print(entrylist)
+    #print(seen_entries)
     await sendReviewMessage(random.choice(entrylist), interaction)
 
 
 @tasks.loop(hours=12)
 async def checkLetterboxd():
-    feed = feedparser.parse("https://letterboxd.com/plexagon/rss/")
-    print("Hello :)")
-    print(len(feed.entries))
-    print(len(seen_entries))
-    time = datetime.now().timetuple()
-    entrylist = []
-    for x in feed.entries:
-        if (datetime(*time[0:6]) - datetime(*x.published_parsed[0:6])).total_seconds() < 604800:
-            entrylist.append(x)
-    if not entrylist:
-        entrylist.append(feed.entries[0]) #This would be the most recent review
-    entrylist = [x for x in entrylist if x not in seen_entries]
-    print(entrylist)
-    for x in entrylist:
-        seen_entries.append(x)
-        for y in letterbox_channels:
-            await sendReviewMessageNew(x, y)
+    for account in letterboxd_accounts:
+        feed = feedparser.parse("https://letterboxd.com/" + account + "/rss/")
+        print("Hello :)")
+        print(len(feed.entries))
+        print(len(seen_entries))
+        time = datetime.now().timetuple()
+        entrylist = []
+        for x in feed.entries:
+            if (datetime(*time[0:6]) - datetime(*x.published_parsed[0:6])).total_seconds() < 604800:
+                if x.has_key("letterboxd_watcheddate"):
+                    entrylist.append(x)
+        if not entrylist:
+            count = 0
+            while feed.entries[count].has_key("letterboxd_watcheddate") == False:
+                count += 1
+            entrylist.append(feed.entries[count]) #This would be the most recent review
+        entrylist = [x for x in entrylist if x not in seen_entries]
+        print(entrylist)
+        for x in entrylist:
+            seen_entries.append(x)
+            for y in letterbox_channels:
+                await sendReviewMessageNew(x, y)
 
 async def sendReviewMessageNew(entry, channel):
     title = entry.title
@@ -144,6 +158,7 @@ async def sendReviewMessageNew(entry, channel):
         spoilers = True
     htmlParse = BeautifulSoup(entry.summary, 'html.parser')
     channel = client.get_channel(channel)
+    await channel.send("Reviewed by: " + str(entry.author))
     await channel.send("Reviewed on " + str(entry.letterboxd_watcheddate))
     print(entry.letterboxd_watcheddate)
     await channel.send(title)
@@ -168,6 +183,7 @@ async def sendReviewMessage(entry, interaction):
     await interaction.response.send_message("Reviewed on " + str(entry.letterboxd_watcheddate))
     print(entry.letterboxd_watcheddate)
     channel = interaction.channel
+    await channel.send("Reviewed by: " + str(entry.author))
     await channel.send(title)
     await channel.send("Rewatched?: " + str(entry.letterboxd_rewatch))
     
