@@ -2,7 +2,9 @@
 import os
 import discord
 import requests
+import aiohttp
 import io
+from PIL import Image
 from discord import app_commands
 from discord.ext import commands, tasks
 import random
@@ -41,7 +43,7 @@ image_files = os.listdir(image_folder)
 print(image_files)
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
-letterboxd_accounts = ["plexagon", "oneduckaday", "the_better_evan", "genet17", "g1bblets"]
+letterboxd_accounts = ["plexagon", "oneduckaday", "the_better_evan", "genet17", "G1bblets"]
 feed = feedparser.parse("https://letterboxd.com/plexagon/rss/")
 seen_entries = []
 
@@ -112,16 +114,22 @@ async def setupLetterboxdChannel(interaction):
     name="recent_letterbox_review",
     description="Get a recent (within a week) letterbox review"
 )
-async def recentLetterboxdReview(interaction):
+@app_commands.describe(user="plexagon, oneduckaday, the_better_evan, genet17, G1bblets")
+async def recentLetterboxdReview(interaction, user:str):
     time = datetime.now().timetuple()
     entrylist = []
-    for x in seen_entries:
+    applicable_seen_entries = []
+    if user in letterboxd_accounts:
+        applicable_seen_entries = [x for x in seen_entries if x.author == user]
+    else:
+        applicable_seen_entries = seen_entries
+    for x in applicable_seen_entries:
         if (datetime(*time[0:6]) - datetime(*x.published_parsed[0:6])).total_seconds() < 604800:
             entrylist.append(x)
     if not entrylist:
-        entrylist.append(seen_entries[len(seen_entries)-1]) #This would be the most recent review
+        entrylist.append(applicable_seen_entries[len(applicable_seen_entries)-1]) #This would be the most recent review
     print(entrylist)
-    #print(seen_entries)
+    print(seen_entries)
     await sendReviewMessage(random.choice(entrylist), interaction)
 
 
@@ -156,6 +164,8 @@ async def sendReviewMessageNew(entry, channel):
     if entry.title.find("(contains spoilers)") != -1:
         title = entry.title.split("(contains spoilers)")[0]
         spoilers = True
+    if entry.letterboxd_memberlike == "Yes":
+        title = title + " ❤"
     htmlParse = BeautifulSoup(entry.summary, 'html.parser')
     channel = client.get_channel(channel)
     await channel.send("Reviewed by: " + str(entry.author))
@@ -172,6 +182,18 @@ async def sendReviewMessageNew(entry, channel):
             await channel.send("|| " + para.get_text() + " ||")
         else:
             await channel.send(para.get_text())
+    img_link = htmlParse.find_all('img')[0]['src']
+    async with aiohttp.ClientSession() as session:
+        async with session.get(img_link) as resp:
+            if resp.status != 200:
+                return await channel.send('Could not download file...')
+            img_bytes = await resp.read()
+            with Image.open(io.BytesIO(img_bytes)) as img:
+                img.thumbnail((200, 200))
+                data = io.BytesIO()
+                img.save(data, format='PNG')
+                data.seek(0)
+                await channel.send(file=discord.File(data, 'movie_thumb.png'))
 
 async def sendReviewMessage(entry, interaction):
     title = entry.title
@@ -179,9 +201,11 @@ async def sendReviewMessage(entry, interaction):
     if entry.title.find("(contains spoilers)") != -1:
         title = entry.title.split("(contains spoilers)")[0]
         spoilers = True
+    if entry.letterboxd_memberlike == "Yes":
+        title = title + " ❤"
     htmlParse = BeautifulSoup(entry.summary, 'html.parser')
     await interaction.response.send_message("Reviewed on " + str(entry.letterboxd_watcheddate))
-    print(entry.letterboxd_watcheddate)
+    print(entry)
     channel = interaction.channel
     await channel.send("Reviewed by: " + str(entry.author))
     await channel.send(title)
@@ -195,6 +219,20 @@ async def sendReviewMessage(entry, interaction):
             await channel.send("|| " + para.get_text() + " ||")
         else:
             await channel.send(para.get_text())
+    img_link = htmlParse.find_all('img')[0]['src']
+    async with aiohttp.ClientSession() as session:
+        async with session.get(img_link) as resp:
+            if resp.status != 200:
+                return await channel.send('Could not download file...')
+            img_bytes = await resp.read()
+            with Image.open(io.BytesIO(img_bytes)) as img:
+                img.thumbnail((200, 200))
+                data = io.BytesIO()
+                img.save(data, format='PNG')
+                data.seek(0)
+                await channel.send(file=discord.File(data, 'movie_thumb.png'))
+
+
 print(TOKEN)
 print(datetime.now().timetuple())
 client.run(TOKEN)
