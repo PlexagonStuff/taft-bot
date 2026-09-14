@@ -43,7 +43,7 @@ image_files = os.listdir(image_folder)
 print(image_files)
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
-letterboxd_accounts = ["plexagon", "oneduckaday", "the_better_evan", "genet17", "G1bblets"]
+letterboxd_accounts = ["plexagon", "oneduckaday", "the_better_evan", "genet17", "G1bblets", "K_he4d", "bushmonkey140"]
 feed = feedparser.parse("https://letterboxd.com/plexagon/rss/")
 seen_entries = []
 
@@ -61,7 +61,7 @@ async def setupSeenEntries():
         for x in feed.entries:
             #Filter out lists eww cringe
             #print(x.keys())
-            if x.has_key("letterboxd_watcheddate"):
+            if "letterboxd-list" not in x["id"]:
                 seen_entries.append(x)
 
 async def sendText(phone_number, carrier, message):
@@ -114,7 +114,7 @@ async def setupLetterboxdChannel(interaction):
     name="recent_letterbox_review",
     description="Get a recent (within a week) letterbox review"
 )
-@app_commands.describe(user="plexagon, oneduckaday, the_better_evan, genet17, G1bblets")
+@app_commands.describe(user="plexagon, oneduckaday, the_better_evan, genet17, G1bblets, K_he4d, bushmonkey140")
 async def recentLetterboxdReview(interaction, user:str):
     time = datetime.now().timetuple()
     entrylist = []
@@ -142,13 +142,14 @@ async def checkLetterboxd():
         print(len(seen_entries))
         time = datetime.now().timetuple()
         entrylist = []
+        print(feed)
         for x in feed.entries:
             if (datetime(*time[0:6]) - datetime(*x.published_parsed[0:6])).total_seconds() < 604800:
-                if x.has_key("letterboxd_watcheddate"):
+                if "letterboxd-list" not in x["id"]:
                     entrylist.append(x)
         if not entrylist:
             count = 0
-            while feed.entries[count].has_key("letterboxd_watcheddate") == False:
+            while "letterboxd-list" in feed.entries[count]["id"]:
                 count += 1
             entrylist.append(feed.entries[count]) #This would be the most recent review
         entrylist = [x for x in entrylist if x not in seen_entries]
@@ -169,8 +170,10 @@ async def sendReviewMessageNew(entry, channel):
     htmlParse = BeautifulSoup(entry.summary, 'html.parser')
     channel = client.get_channel(channel)
     await channel.send("Reviewed by: " + str(entry.author))
-    await channel.send("Reviewed on " + str(entry.letterboxd_watcheddate))
-    print(entry.letterboxd_watcheddate)
+    #Apparently someone (Keane) did not log a date for their review smh
+    if "letterboxd_watcheddate" in entry:
+        await channel.send("Reviewed on " + str(entry.letterboxd_watcheddate))
+        print(entry.letterboxd_watcheddate)
     await channel.send(title)
     await channel.send("Rewatched?: " + str(entry.letterboxd_rewatch))
     
@@ -204,8 +207,9 @@ async def sendReviewMessage(entry, interaction):
     if entry.letterboxd_memberlike == "Yes":
         title = title + " ❤"
     htmlParse = BeautifulSoup(entry.summary, 'html.parser')
-    await interaction.response.send_message("Reviewed on " + str(entry.letterboxd_watcheddate))
-    print(entry)
+    if "letterboxd_watcheddate" in entry:
+        await interaction.response.send_message("Reviewed on " + str(entry.letterboxd_watcheddate))
+        print(entry.letterboxd_watcheddate)
     channel = interaction.channel
     await channel.send("Reviewed by: " + str(entry.author))
     await channel.send(title)
