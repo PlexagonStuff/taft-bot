@@ -58,6 +58,9 @@ async def on_ready():
 async def setupSeenEntries():
     for account in letterboxd_accounts:
         feed = feedparser.parse("https://letterboxd.com/" + account + "/rss/")
+        if feed.get("status") != 200:
+            print("Letterbox feed fetching error")
+            continue
         for x in feed.entries:
             #Filter out lists eww cringe
             #print(x.keys())
@@ -129,7 +132,7 @@ async def recentLetterboxdReview(interaction, user:str):
     if not entrylist:
         entrylist.append(applicable_seen_entries[len(applicable_seen_entries)-1]) #This would be the most recent review
     print(entrylist)
-    print(seen_entries)
+    #print(seen_entries)
     await sendReviewMessage(random.choice(entrylist), interaction)
 
 
@@ -137,6 +140,9 @@ async def recentLetterboxdReview(interaction, user:str):
 async def checkLetterboxd():
     for account in letterboxd_accounts:
         feed = feedparser.parse("https://letterboxd.com/" + account + "/rss/")
+        if feed.get("status") != 200:
+            print("Letterbox feed fetching error")
+            continue
         print("Hello :)")
         print(len(feed.entries))
         print(len(seen_entries))
@@ -153,7 +159,7 @@ async def checkLetterboxd():
                 count += 1
             entrylist.append(feed.entries[count]) #This would be the most recent review
         entrylist = [x for x in entrylist if x not in seen_entries]
-        print(entrylist)
+        #print(entrylist)
         for x in entrylist:
             seen_entries.append(x)
             for y in letterbox_channels:
