@@ -43,7 +43,7 @@ image_files = os.listdir(image_folder)
 print(image_files)
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
-letterboxd_accounts = ["plexagon", "oneduckaday", "the_better_evan", "genet17", "G1bblets", "K_he4d", "bushmonkey140"]
+letterboxd_accounts = ["plexagon", "oneduckaday", "the_better_evan", "genet17", "G1bblets", "K_he4d", "bushmonkey140", "NotSoStealthOp"]
 feed = feedparser.parse("https://letterboxd.com/plexagon/rss/")
 seen_entries = []
 
@@ -117,7 +117,7 @@ async def setupLetterboxdChannel(interaction):
     name="recent_letterbox_review",
     description="Get a recent (within a week) letterbox review"
 )
-@app_commands.describe(user="plexagon, oneduckaday, the_better_evan, genet17, G1bblets, K_he4d, bushmonkey140")
+@app_commands.describe(user="plexagon, oneduckaday, the_better_evan, genet17, G1bblets, K_he4d, bushmonkey140, NotSoStealthOp")
 async def recentLetterboxdReview(interaction, user:str):
     time = datetime.now().timetuple()
     entrylist = []
