@@ -126,6 +126,9 @@ async def recentLetterboxdReview(interaction, user:str):
         applicable_seen_entries = [x for x in seen_entries if x.author == user]
     else:
         applicable_seen_entries = seen_entries
+    #Check for empty letterboxd accounts
+    if not applicable_seen_entries:
+        return
     for x in applicable_seen_entries:
         if (datetime(*time[0:6]) - datetime(*x.published_parsed[0:6])).total_seconds() < 604800:
             entrylist.append(x)
@@ -149,6 +152,10 @@ async def checkLetterboxd():
         time = datetime.now().timetuple()
         entrylist = []
         print(feed)
+        #Check for empty letterboxd accounts
+        if not feed.entries:
+            continue
+        print(feed.entries)
         for x in feed.entries:
             if (datetime(*time[0:6]) - datetime(*x.published_parsed[0:6])).total_seconds() < 604800:
                 if "letterboxd-list" not in x["id"]:
